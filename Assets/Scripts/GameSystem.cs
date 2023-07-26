@@ -98,7 +98,7 @@ public class GameSystem : MonoBehaviour
         {
             for (int i = 0; i < removeCount; i++)
             {
-                Destroy(removeSapples[i].gameObject);
+                removeSapples[i].Explosion();
             }
 
             StartCoroutine(sappleGenerator.Spawns(removeCount));
