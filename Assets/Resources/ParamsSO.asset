@@ -15,3 +15,4 @@ MonoBehaviour:
   initSappleCount: 60
   scorePoint: 100
   sappleDistance: 1.5
+  bombRange: 1

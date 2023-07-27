@@ -20,13 +20,20 @@ public class GameSystem : MonoBehaviour
     Sapple currentDraggingSapple = default;
     int score;
     [SerializeField] TextMeshProUGUI scoreText = default;
+    [SerializeField] GameObject pointEffectPrefab = default;
 
     // Start is called before the first frame update
     void Start()
     {
-        StartCoroutine(sappleGenerator.Spawns(ParamsSO.Entity.initSappleCount));
         score = 0;
         AddScore(0);
+        StartCoroutine(sappleGenerator.Spawns(ParamsSO.Entity.initSappleCount));
+    }
+
+    void AddScore(int point)
+    {
+        score += point;
+        scoreText.text = score.ToString();
     }
 
     // Update is called once per frame
@@ -46,25 +53,28 @@ public class GameSystem : MonoBehaviour
         }
     }
 
-
-    void AddScore(int point)
-    {
-        score += point;
-        scoreText.text = score.ToString();
-    }
-
-
     void OnDragBegin()
     {
         Vector2 mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         RaycastHit2D hit = Physics2D.Raycast(mousePosition, Vector2.zero);
 
-        if(hit && hit.collider.GetComponent<Sapple>()) //何かしらにヒットしてそれがサップルのコンポーネントを持っていれば
+        if (hit && hit.collider.GetComponent<Sapple>()) //何かしらにヒットしてそれがサップルのコンポーネントを持っていれば
         {
             Sapple sapple = hit.collider.GetComponent<Sapple>();
             AddRemoveSapple(sapple);
             isDragging = true;
         }
+
+        if (hit && hit.collider.GetComponent<Item>()) //何かしらにヒットしてそれがアイテムのコンポーネントを持っていれば
+        {
+            //爆破
+
+            Item bomb = hit.collider.GetComponent<Item>();
+            Explosion(bomb);
+
+        }
+
+
     }
 
 
@@ -102,8 +112,9 @@ public class GameSystem : MonoBehaviour
             }
 
             StartCoroutine(sappleGenerator.Spawns(removeCount));
-
-            AddScore(removeCount * ParamsSO.Entity.scorePoint);
+            int score = removeCount * ParamsSO.Entity.scorePoint;
+            AddScore(score);
+            SpawnPointEffect(removeSapples[removeSapples.Count - 1].transform.position, score);
         }
 
         for (int i = 0; i < removeCount; i++)
@@ -112,7 +123,6 @@ public class GameSystem : MonoBehaviour
         }
 
         removeSapples.Clear();
-
         isDragging = false;
     }
 
@@ -125,6 +135,49 @@ public class GameSystem : MonoBehaviour
             sapple.transform.localScale = Vector3.one * 1.65f;
             removeSapples.Add(sapple);
         }
+    }
+
+    void Explosion(Item bomb)
+    {
+        List<Sapple> explosionList = new List<Sapple>();
+
+        //ボムを中心に爆発するSappleを集める
+        Collider2D[] hitObj = Physics2D.OverlapCircleAll(bomb.transform.position, ParamsSO.Entity.bombRange);
+
+        Debug.Log(hitObj.Length);
+
+        for (int i = 0; i < hitObj.Length; i++)
+        {
+            // サップルだったら爆破リストに加える
+            Sapple sapple = hitObj[i].GetComponent<Sapple>();
+
+            if(sapple && explosionList.Contains(sapple) == false) //対象がサップルかつリストに含まれていなかったら（コライダを複数つけているためこうしないと同じものが大量にリストに追加される）
+            {
+                explosionList.Add(sapple);
+            }
+
+        }
+
+        //爆破する
+
+        int removeCount = explosionList.Count;
+
+        for(int i = 0; i < removeCount; i++)
+        {
+            explosionList[i].Explosion();
+        }
+
+
+        StartCoroutine(sappleGenerator.Spawns(removeCount + 1)); //ボムは数に加えられないので +1
+        int score = removeCount * ParamsSO.Entity.scorePoint;
+        AddScore(score);
+        SpawnPointEffect(bomb.transform.position, score);
+        bomb.Explosion();
+    }
+
+    void SpawnPointEffect(Vector2 position, int score)
+    {
+        Instantiate(pointEffectPrefab, position, Quaternion.identity);
     }
 
 }
